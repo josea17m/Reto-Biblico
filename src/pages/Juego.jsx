@@ -5,6 +5,8 @@ import Escalera from "../components/Escalera";
 import FinDeJuego from "../components/FinDeJuego";
 import Opcion from "../components/Opcion";
 import PanelAyuda from "../components/PanelAyuda";
+import Temporizador from "../components/Temporizador";
+import BotonSonido from "../components/BotonSonido";
 import { ESCALERA, TOTAL_NIVELES, formatearTalentos } from "../data/escalera";
 import { useJuego } from "../hooks/useJuego";
 import { guardarPuntaje, leerJugador } from "../lib/almacenamiento";
@@ -45,7 +47,7 @@ const Juego = () => {
         <FinDeJuego
           resultado={resultado}
           jugador={jugador}
-          respuestaCorrecta={resultado.motivo === "derrota" ? correcta : undefined}
+          respuestaCorrecta={resultado.motivo === "derrota" || resultado.motivo === "tiempo" ? correcta : undefined}
           onReiniciar={reiniciar}
         />
       </main>
@@ -59,14 +61,24 @@ const Juego = () => {
   return (
     <main className="mx-auto grid min-h-dvh max-w-5xl gap-6 p-4 lg:grid-cols-[1fr_14rem] lg:p-6">
       <div className="flex flex-col gap-5">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <Link to="/" className="text-sm text-slate-400 hover:text-oro-400">
-            ← Salir
-          </Link>
-          <p className="text-sm text-slate-300">
-            Pregunta <strong className="text-slate-100">{nivel + 1}</strong> de {TOTAL_NIVELES} ·{" "}
-            <span className="text-oro-400">{formatearTalentos(premioEnJuego)} talentos</span>
-          </p>
+        <header className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link to="/" className="text-sm text-slate-400 hover:text-oro-400">
+              ← Salir
+            </Link>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-slate-300">
+                Pregunta <strong className="text-slate-100">{nivel + 1}</strong> de {TOTAL_NIVELES} ·{" "}
+                <span className="text-oro-400">{formatearTalentos(premioEnJuego)} talentos</span>
+              </p>
+              <BotonSonido />
+            </div>
+          </div>
+          <Temporizador
+            segundos={juego.segundos}
+            total={juego.segundosTotales}
+            enPausa={fase !== "jugando" || Boolean(juego.ayuda)}
+          />
         </header>
 
         <Comodines

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useReducer } from "react";
-import { PREGUNTAS, preguntasPorDificultad } from "../data/preguntas";
+import { useCallback, useEffect, useReducer } from "react";
+import { preguntasPorDificultad } from "../data/preguntas";
 import {
   ESCALERA,
   TOTAL_NIVELES,
@@ -7,13 +7,20 @@ import {
   premioPorRetiro,
 } from "../data/escalera";
 import { barajar, enteroEntre, tomarAlAzar } from "../lib/aleatorio";
+import { reproducir } from "../lib/sonido";
 
 const LETRAS = ["A", "B", "C", "D"];
 const PREGUNTAS_POR_DIFICULTAD = TOTAL_NIVELES / 3;
 
 /** Milisegundos de suspenso antes de revelar, y de revelado antes de avanzar. */
-export const ESPERA_VERIFICANDO = 1400;
-export const ESPERA_REVELANDO = 2300;
+const ESPERA_VERIFICANDO = 1400;
+const ESPERA_REVELANDO = 2300;
+
+/** Tiempo para responder, más generoso cuanto más difícil es la pregunta. */
+export const SEGUNDOS_POR_DIFICULTAD = { facil: 30, media: 45, dificil: 60 };
+
+/** Segundos finales en los que la cuenta atrás suena y se pinta en rojo. */
+export const SEGUNDOS_DE_ALARMA = 5;
 
 /**
  * Baraja las opciones de una pregunta del banco y las etiqueta A-D, de modo
@@ -41,7 +48,7 @@ function prepararPregunta(pregunta) {
 }
 
 /** Arma las 15 preguntas de una partida: cinco de cada dificultad, en orden. */
-export function prepararPartida() {
+function prepararPartida() {
   return ["facil", "media", "dificil"]
     .flatMap((dificultad) =>
       tomarAlAzar(preguntasPorDificultad(dificultad), PREGUNTAS_POR_DIFICULTAD)
@@ -49,9 +56,12 @@ export function prepararPartida() {
     .map(prepararPregunta);
 }
 
+const segundosDe = (pregunta) => SEGUNDOS_POR_DIFICULTAD[pregunta.dificultad];
+
 function estadoInicial() {
+  const preguntas = prepararPartida();
   return {
-    preguntas: prepararPartida(),
+    preguntas,
     nivel: 0,
     fase: "jugando",
     seleccionada: null,
@@ -59,6 +69,9 @@ function estadoInicial() {
     comodines: { mitad: true, publico: true, llamada: true },
     ayuda: null,
     resultado: null,
+    agotado: false,
+    segundos: segundosDe(preguntas[0]),
+    segundosTotales: segundosDe(preguntas[0]),
   };
 }
 
@@ -67,6 +80,16 @@ function reducer(estado, accion) {
     case "responder":
       if (estado.fase !== "jugando") return estado;
       return { ...estado, fase: "verificando", seleccionada: accion.opcion, ayuda: null };
+
+    case "tic": {
+      if (estado.fase !== "jugando") return estado;
+      // Al llegar a cero se salta el suspenso: la respuesta se revela ya, sin
+      // ninguna opción marcada, y el flujo normal la tratará como fallo.
+      if (estado.segundos <= 1) {
+        return { ...estado, segundos: 0, fase: "revelando", seleccionada: null, agotado: true };
+      }
+      return { ...estado, segundos: estado.segundos - 1 };
+    }
 
     case "revelar":
       if (estado.fase !== "verificando") return estado;
@@ -82,7 +105,7 @@ function reducer(estado, accion) {
           ...estado,
           fase: "terminado",
           resultado: {
-            motivo: "derrota",
+            motivo: estado.agotado ? "tiempo" : "derrota",
             talentos: premioAsegurado(estado.nivel),
             nivelAlcanzado: estado.nivel,
           },
@@ -109,6 +132,9 @@ function reducer(estado, accion) {
         seleccionada: null,
         eliminadas: [],
         ayuda: null,
+        agotado: false,
+        segundos: segundosDe(estado.preguntas[siguiente]),
+        segundosTotales: segundosDe(estado.preguntas[siguiente]),
       };
     }
 
@@ -203,28 +229,65 @@ function consejoDelAmigo(pregunta, eliminadas) {
   return { opcion: elegida, mensaje: frases[Math.floor(Math.random() * frases.length)] };
 }
 
+const SONIDO_FINAL = {
+  victoria: "victoria",
+  retiro: "retiro",
+  derrota: "derrota",
+  tiempo: "derrota",
+};
+
 export function useJuego() {
   const [estado, dispatch] = useReducer(reducer, undefined, estadoInicial);
 
-  const pregunta = estado.preguntas[estado.nivel] ?? null;
+  const { fase, nivel, ayuda, segundos, seleccionada, agotado, resultado } = estado;
+  const pregunta = estado.preguntas[nivel] ?? null;
 
   // El suspenso: verificar -> revelar -> avanzar, encadenado por temporizadores.
   useEffect(() => {
-    if (estado.fase !== "verificando" && estado.fase !== "revelando") return undefined;
-    const espera = estado.fase === "verificando" ? ESPERA_VERIFICANDO : ESPERA_REVELANDO;
-    const siguiente = estado.fase === "verificando" ? "revelar" : "avanzar";
+    if (fase !== "verificando" && fase !== "revelando") return undefined;
+    const espera = fase === "verificando" ? ESPERA_VERIFICANDO : ESPERA_REVELANDO;
+    const siguiente = fase === "verificando" ? "revelar" : "avanzar";
     const temporizador = setTimeout(() => dispatch({ tipo: siguiente }), espera);
     return () => clearTimeout(temporizador);
-  }, [estado.fase, estado.nivel]);
+  }, [fase, nivel]);
 
-  const responder = useCallback((opcion) => dispatch({ tipo: "responder", opcion }), []);
+  // La cuenta atrás se detiene mientras haya un comodín abierto en pantalla:
+  // leer la votación del público no debería costarle segundos al jugador.
+  useEffect(() => {
+    if (fase !== "jugando" || ayuda) return undefined;
+    const intervalo = setInterval(() => dispatch({ tipo: "tic" }), 1000);
+    return () => clearInterval(intervalo);
+  }, [fase, ayuda, nivel]);
+
+  useEffect(() => {
+    if (fase === "jugando" && !ayuda && segundos > 0 && segundos <= SEGUNDOS_DE_ALARMA) {
+      reproducir("tic");
+    }
+  }, [segundos, fase, ayuda]);
+
+  useEffect(() => {
+    if (fase !== "revelando" || !pregunta) return;
+    if (agotado) reproducir("tiempo");
+    else reproducir(seleccionada === pregunta.correcta ? "acierto" : "fallo");
+  }, [fase, agotado, seleccionada, pregunta]);
+
+  useEffect(() => {
+    if (fase === "terminado" && resultado) reproducir(SONIDO_FINAL[resultado.motivo]);
+  }, [fase, resultado]);
+
+  const responder = useCallback((opcion) => {
+    reproducir("elegir");
+    dispatch({ tipo: "responder", opcion });
+  }, []);
+
   const retirarse = useCallback(() => dispatch({ tipo: "retirarse" }), []);
   const reiniciar = useCallback(() => dispatch({ tipo: "reiniciar" }), []);
   const cerrarAyuda = useCallback(() => dispatch({ tipo: "cerrarAyuda" }), []);
 
   const usarComodin = useCallback(
     (comodin) => {
-      if (estado.fase !== "jugando" || !estado.comodines[comodin] || !pregunta) return;
+      if (fase !== "jugando" || !estado.comodines[comodin] || !pregunta) return;
+      reproducir("comodin");
 
       if (comodin === "mitad") {
         const incorrectas = pregunta.opciones
@@ -238,22 +301,19 @@ export function useJuego() {
         return;
       }
 
-      const ayuda =
+      const nuevaAyuda =
         comodin === "publico"
           ? { tipo: "publico", votos: votacionDelPublico(pregunta, estado.eliminadas) }
           : { tipo: "llamada", ...consejoDelAmigo(pregunta, estado.eliminadas) };
 
-      dispatch({ tipo: "usarComodin", comodin, ayuda });
+      dispatch({ tipo: "usarComodin", comodin, ayuda: nuevaAyuda });
     },
-    [estado.comodines, estado.eliminadas, estado.fase, pregunta]
+    [estado.comodines, estado.eliminadas, fase, pregunta]
   );
-
-  const totalPreguntas = useMemo(() => PREGUNTAS.length, []);
 
   return {
     ...estado,
     pregunta,
-    totalPreguntas,
     responder,
     retirarse,
     reiniciar,

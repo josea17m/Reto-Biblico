@@ -13,6 +13,11 @@ const MENSAJES = {
     versiculo: "«El prudente ve el mal y se esconde; mas los simples pasan y reciben el daño.»",
     cita: "Proverbios 22:3",
   },
+  tiempo: {
+    titulo: "Se acabó el tiempo",
+    versiculo: "«Enséñanos de tal modo a contar nuestros días, que traigamos al corazón sabiduría.»",
+    cita: "Salmo 90:12",
+  },
   derrota: {
     titulo: "Fin del camino",
     versiculo: "«Porque siete veces cae el justo, y vuelve a levantarse.»",
@@ -38,7 +43,7 @@ const FinDeJuego = ({ resultado, jugador, respuestaCorrecta, onReiniciar }) => {
         {TOTAL_NIVELES}.
       </p>
 
-      {resultado.motivo === "derrota" && respuestaCorrecta && (
+      {respuestaCorrecta && (
         <p className="mt-2 text-slate-300">
           La respuesta correcta era: <strong className="text-acierto">{respuestaCorrecta}</strong>
         </p>
@@ -66,7 +71,7 @@ const FinDeJuego = ({ resultado, jugador, respuestaCorrecta, onReiniciar }) => {
 
 FinDeJuego.propTypes = {
   resultado: PropTypes.shape({
-    motivo: PropTypes.oneOf(["victoria", "derrota", "retiro"]).isRequired,
+    motivo: PropTypes.oneOf(["victoria", "derrota", "retiro", "tiempo"]).isRequired,
     talentos: PropTypes.number.isRequired,
     nivelAlcanzado: PropTypes.number.isRequired,
   }).isRequired,

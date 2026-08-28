@@ -7,6 +7,7 @@ const ETIQUETA_MOTIVO = {
   victoria: "Ganó el premio mayor",
   retiro: "Se retiró",
   derrota: "Falló",
+  tiempo: "Se quedó sin tiempo",
 };
 
 const MEDALLAS = ["🥇", "🥈", "🥉"];

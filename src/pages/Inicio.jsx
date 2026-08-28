@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import BotonSonido from "../components/BotonSonido";
 import { guardarJugador, leerJugador } from "../lib/almacenamiento";
 
 const LARGO_MAXIMO = 24;
@@ -23,6 +24,9 @@ const Inicio = () => {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-10 p-6">
       <header className="text-center">
+        <div className="flex justify-end">
+          <BotonSonido />
+        </div>
         <h1 className="font-titulo text-5xl font-bold text-oro-400">Reto Bíblico</h1>
         <p className="mt-3 text-slate-300">
           Quince preguntas, tres comodines y un millón de talentos en juego.

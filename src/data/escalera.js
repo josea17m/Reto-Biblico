@@ -23,13 +23,6 @@ export const ESCALERA = [
 
 export const TOTAL_NIVELES = ESCALERA.length;
 
-/** Dificultad que corresponde a cada indice de nivel (0-14). */
-export function dificultadDeNivel(indice) {
-  if (indice < 5) return "facil";
-  if (indice < 10) return "media";
-  return "dificil";
-}
-
 /**
  * Premio que se lleva el jugador si falla en `indice`: el ultimo nivel
  * seguro que ya habia superado, o 0 si aun no alcanzaba ninguno.

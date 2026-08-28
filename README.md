@@ -16,6 +16,14 @@ talentos en juego.
   - `Público` muestra cómo votaría la congregación.
   - `Llamada` pide consejo a un amigo, que acierta más a menudo en las
     preguntas fáciles que en las difíciles.
+- **Temporizador** por pregunta: 30 segundos en las fáciles, 45 en las medias
+  y 60 en las difíciles. Se detiene mientras se lee la ayuda de un comodín, y
+  en los últimos cinco segundos se pinta en rojo y hace tic-tac. Quedarse sin
+  tiempo cuenta como fallo.
+- **Efectos de sonido** sintetizados con la Web Audio API, sin archivos de
+  audio: al elegir respuesta, al acertar, al fallar, al gastar un comodín y en
+  cada final. El interruptor de la esquina los silencia y recuerda la
+  preferencia.
 - **Retirarse** en cualquier momento conserva lo ganado hasta la pregunta
   anterior. Fallar deja sólo el último nivel seguro superado.
 - Los resultados se guardan en el navegador (`localStorage`) y se listan en
@@ -49,8 +57,9 @@ npx playwright install chromium
 src/
   data/escalera.js     escalera de premios y cálculo de lo que se cobra
   data/preguntas.js    banco de preguntas
-  hooks/useJuego.js    máquina de estados de la partida y los comodines
+  hooks/useJuego.js    máquina de estados: partida, comodines y cuenta atrás
   lib/aleatorio.js     barajado y selección al azar
+  lib/sonido.js        síntesis de los efectos de sonido
   lib/almacenamiento.js  nombre del jugador y tabla de puntajes
   components/          escalera, opciones, comodines, ayudas y pantalla final
   pages/               inicio, juego y puntajes

@@ -58,6 +58,9 @@ async function responder(pagina, texto) {
   );
 }
 
+const segundosEnPantalla = async (pagina) =>
+  Number(await pagina.locator('[role="timer"]').textContent());
+
 const premioMostrado = async (pagina) =>
   (await pagina.locator("section p.text-5xl").textContent()).trim();
 
@@ -96,6 +99,24 @@ async function ejecutar(pagina, banco) {
     .count();
   if (gastados !== 3) throw new Error(`quedaron ${3 - gastados} comodines sin gastar`);
   paso("los tres comodines se gastan una sola vez");
+
+  // --- Temporizador ---
+  // La ayuda del comodín sigue abierta, así que el reloj debe estar detenido.
+  const detenido = await segundosEnPantalla(pagina);
+  await esperar(2500);
+  if ((await segundosEnPantalla(pagina)) !== detenido) {
+    throw new Error("el reloj corrió mientras había un comodín abierto");
+  }
+  paso("la cuenta atrás se detiene mientras se lee un comodín");
+
+  await pagina.getByRole("button", { name: "Cerrar la ayuda" }).click();
+  const antesDeEsperar = await segundosEnPantalla(pagina);
+  await esperar(2500);
+  const despues = await segundosEnPantalla(pagina);
+  if (despues >= antesDeEsperar) {
+    throw new Error(`el reloj no avanzó: ${antesDeEsperar} → ${despues}`);
+  }
+  paso("la cuenta atrás corre al cerrar el comodín");
 
   // --- Partida ganada ---
   for (let nivel = 1; nivel <= 15; nivel += 1) {
@@ -149,6 +170,31 @@ async function ejecutar(pagina, banco) {
     throw new Error("retirarse tras un acierto debería pagar 100 talentos");
   }
   paso("retirarse conserva lo ganado hasta la pregunta anterior");
+
+  // --- Tiempo agotado ---
+  // La primera pregunta es siempre fácil, así que concede 30 segundos.
+  await pagina.goto(`${URL}/juego`);
+  await pagina.locator("section h1").waitFor();
+  if ((await segundosEnPantalla(pagina)) !== 30) {
+    throw new Error("la primera pregunta debería conceder 30 segundos");
+  }
+  await pagina.getByText("Se acabó el tiempo").waitFor({ timeout: 60000 });
+  if ((await premioMostrado(pagina)) !== "0") {
+    throw new Error("quedarse sin tiempo en la primera pregunta debería pagar 0");
+  }
+  paso("agotar el tiempo termina la partida sin premio");
+
+  // --- Interruptor de sonido ---
+  await pagina.goto(URL);
+  const interruptor = pagina.getByRole("button", { name: "Silenciar el sonido" });
+  await interruptor.click();
+  await pagina.reload();
+  const silenciado = pagina.getByRole("button", { name: "Activar el sonido" });
+  if ((await silenciado.getAttribute("aria-pressed")) !== "true") {
+    throw new Error("el silencio no sobrevivió a la recarga");
+  }
+  await silenciado.click();
+  paso("el interruptor de sonido recuerda la preferencia entre recargas");
 }
 
 const servidor = await levantarServidor();
