@@ -1,18 +1,19 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import App from "./App.jsx";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import Inicio from "./pages/Inicio.jsx";
+import Juego from "./pages/Juego.jsx";
+import Scoreboard from "./pages/Scoreboard.jsx";
 import "./index.css";
-import Juego from "./Juego.jsx";
-import Scoreboard from "./Scoreboard.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<App />} />
+        <Route path="/" element={<Inicio />} />
         <Route path="/juego" element={<Juego />} />
         <Route path="/scoreboard" element={<Scoreboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
