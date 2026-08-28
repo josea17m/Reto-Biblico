@@ -51,6 +51,16 @@ La prueba de extremo a extremo necesita el navegador de Playwright una sola vez:
 npx playwright install chromium
 ```
 
+## Despliegue
+
+El juego está publicado en Vercel: <https://reto-biblico.vercel.app>.
+
+Al ser una aplicación de una sola página con rutas de cliente (`/juego`,
+`/scoreboard`), el servidor tiene que devolver `index.html` para cualquier ruta
+que no sea un archivo real; si no, entrar directamente a `/juego` o recargar
+esa página da un 404. De eso se encarga la regla de `vercel.json`, escrita para
+no interceptar `/api/*` por si algún día hay funciones de servidor.
+
 ## Estructura
 
 ```
@@ -64,6 +74,7 @@ src/
   components/          escalera, opciones, comodines, ayudas y pantalla final
   pages/               inicio, juego y puntajes
 pruebas/juego.e2e.mjs  prueba de extremo a extremo
+vercel.json            reescritura de rutas para el despliegue
 ```
 
 No hay servidor: las preguntas viven en el repositorio y los puntajes en el
